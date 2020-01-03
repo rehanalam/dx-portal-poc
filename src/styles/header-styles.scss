@@ -5,6 +5,10 @@ header {
   display: flex;
   justify-content: space-between;
 
+  .hidden-logo {
+    background: url(../img/header-logo.png);
+  }
+
   .left {
     max-width: 400px;
     display: flex;
@@ -14,11 +18,14 @@ header {
       text-decoration: none;
       cursor: pointer;
 
-      a > img {
-        max-width: 150px;
-        max-height: 40px;
-        display: flex;
+      a  {
+        background: url(../img/header-logo.png) no-repeat no-repeat center center;
+        background-size: contain;
+        width: 150px;
+        height: 40px;
+        display: block;
         align-items: center;
+
       }
     }
 
