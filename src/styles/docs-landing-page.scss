@@ -1,0 +1,147 @@
+
+.container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+
+  .cover-image-wrapper {
+    background: url("../img/cover-imgae.jpg") no-repeat no-repeat center;
+    background-size: cover;
+    width: 100%;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 0 0 10px 10px;
+    position: relative;
+
+    .content {
+      display: flex;
+      flex-flow: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0 20px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+      
+      > h1 {
+        font: 600 30px/19px Open Sans;
+        letter-spacing: 0;
+        color: #ffffff;
+        margin: 0;
+      }
+  
+      > p {
+        font: 500 14px/19px Open Sans;
+        letter-spacing: 0;
+        color: #ffffff;
+      }
+  
+      > a {
+        width: 110px;
+        height: 35px;
+        background: $primary-color 0% 0% no-repeat padding-box;
+        border-radius: 3px;
+        font: 600 14px/26px Open Sans;
+        letter-spacing: 0;
+        color: #ffffff;
+        border: none;
+        margin-top: 20px;
+        display: block;
+        text-align: center;
+        line-height: 35px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+    }
+    .overlay {
+      width: 100%;
+      height: 300px;
+      background: #324251;
+      opacity: .3;
+      position: absolute;
+    }
+
+    
+  }
+  //.cover-image-wrapper
+
+  .api-list-wrapper {
+    width: 100%;
+    margin-top: 50px;
+    h1 {
+      text-align: center;
+      font: Bold 20px/19px Open Sans;
+      letter-spacing: 0;
+      color: #616784;
+      margin-bottom: 30px;
+    }
+    .content-box-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      > a {
+        text-decoration: none;
+      }
+      .content-box {
+        width: 480px;
+        min-height: 173px;
+        background: #f9fafe 0% 0% no-repeat padding-box;
+        border-radius: 6px;
+        padding: 15px;
+        cursor: pointer;
+
+        &:hover {
+          background: #f1f2f8;
+        }
+
+        h3 {
+          text-align: left;
+          font: 600 22px/19px Open Sans;
+          letter-spacing: 0;
+          color: #282d44;
+
+          .chevron::before {
+            content: "";
+            width: 0.3em;
+            height: 0.3em;
+            border: #282d44 solid;
+            border-width: 0.07em 0.07em 0 0;
+            display: inline-block;
+            position: relative;
+            top: 0.25em;
+            left: 0.15em;
+            transform: rotate(-45deg);
+            vertical-align: top;
+          }
+
+          .chevron.right:before {
+            left: 0;
+            transform: rotate(45deg);
+          }
+
+          .dot {
+            height: 8px;
+            width: 8px;
+            background-color: $primary-color;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            top: -5px;
+            margin-right: 7px;
+          }
+        }
+        p {
+          text-align: left;
+          font: 500 14px/24px Open Sans;
+          letter-spacing: 0;
+          color: #3e445d;
+          padding: 0 20px;
+        }
+      }
+    }
+  }
+}

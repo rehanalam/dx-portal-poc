@@ -1,0 +1,22 @@
+@font-face {
+  font-family: "Ridley Grotesk Demo";
+  src: url("../fonts/ridleygroteskdemo-regular-webfont.woff2") format("woff2");
+}
+
+$primary-color: #ff4785;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: content-box;
+}
+
+@import './header-styles.scss';
+@import './docs-styles.scss';
+@import './docs-landing-page.scss';

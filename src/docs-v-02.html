@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PAYCONIQ - Documentation</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <header>
+    <div class="left">
+      <div class="logo">
+        <a href='/'>
+          <img src="../src/img/header-logo.png">  
+        </a>
+      </div>
+      <h1 class="heading">
+        DOCUMENTATION
+      </h1>
+    </div>
+    <div class="right">
+      <select class="version-select" id="version-select">
+        <option value="docs-v-01" >Payconicq API</option>
+        <option value="docs-v-02" selected>APIMatic API</option>
+      </select>
+      <button class="default-btn">
+        Log In
+      </button>
+      <button class="primary-btn">
+        Sign Up
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <noscript> You need to enable JavaScript to run this app. </noscript>
+
+    <script type="text/javascript">
+      var script = document.createElement("script");
+      script.src = "https://heuristic-pasteur-ac6ade.netlify.com/static/js/portal.v7.js";
+      script.onload = function () {
+        APIMaticDevPortal.show({
+          container: 'apimatic-widget',
+          apiKey:
+            '8bt0WJD4Z596xsB-lb8SOFP3_8Bn-CogpXvH-qmH_tm9oskmoA4l5OLXTVfWp9mlGit8boeeJtwOuMHWAhCXIA**',
+          baseUrl: 'https://www.apimatic.io',
+          enableExport: true,
+          renameHttpToRest: false,
+          enableConsoleCalls: true,
+          enableSdkDownload: true,
+          useProxyForConsoleCalls: true,
+          languageSettings: {
+            'docs-http': {},
+            cs_net_standard_lib: {
+              // disableSdkDownload:  true
+            },
+            java_gradle_android_lib: {
+              // disableSdkDownload:  true
+            },
+            objc_cocoa_touch_ios_lib: {
+              sdkDownloadLink: 'https://www.apimatic.io'
+            },
+            java_eclipse_jre_lib: {},
+            php_generic_lib: {},
+            python_generic_lib: {
+              sdkDownloadLink: 'https://www.apimatic.io',
+              // disableSdkDownload:  true
+            },
+            ruby_generic_lib: {},
+            angular_javascript_lib: {},
+            node_javascript_lib: {
+              // disableSdkDownload:  true
+            },
+            go_generic_lib: {}
+          },
+
+          themeOverrides: {
+            themeType: 'cool',
+            palette: {
+              primaryColor: '#ff4785'
+            }
+          },
+          codegenApiRoutes: {
+            docsgen:
+              '/api/api-entities/{apikey}/published-artifacts/docs-generations/generated-file?template={template}',
+            codegen:
+              '/api/api-entities/{apikey}/published-artifacts/code-generations/generated-file?template={template}',
+            transform:
+              '/api/api-entities/{apikey}/published-artifacts/transformations/generated-file?format={format}',
+            apiProxy: 'https://apimatic-proxy.azurewebsites.net/api/proxy'
+          }
+        });
+      };
+      document.getElementsByTagName("head")[0].appendChild(script);
+    </script>
+    <div id="apimatic-widget"></div>
+  </main>
+</body>
+</html>

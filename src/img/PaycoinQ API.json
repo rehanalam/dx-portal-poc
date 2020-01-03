@@ -1,0 +1,1248 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "3.0.0",
+    "title": "Payconiq Merchant Payment V3 API Reference",
+    "description": "The main API documentation can be found on the [Payconiq Developer Portal.](https://developer.payconiq.com/online-payments-dock/)\n\nThe Payconiq API is organized around REST and uses HTTP response codes to indicate API errors. In addition, standard HTTP features such as header authentication and HTTP verbs which are understood by off the shelf HTTP clients across all the programming languages are also used. JSON bodies are used in requests and returned in relevant API responses, including errors. APIs intended to support the merchant/partner's payment flow on creation, cancelation, search and refunds.\n\nProd Url: [https://api.payconiq.com/v3](https://api.payconiq.com/v3)\n\nEXT Url: [https://api.ext.payconiq.com/v3](https://api.ext.payconiq.com/v3)",
+    "contact": {
+      "email": "devsupport@payconiq.com",
+      "name": "Payconiq Developer Support",
+      "url": "https://developer.payconiq.com/online-payments-dock/"
+    }
+  },
+  "host": "api.ext.payconiq.com",
+  "basePath": "/v3",
+  "securityDefinitions": {
+    "Authorization": {
+      "type": "apiKey",
+      "description": "All requests to the Payconiq payment system are authenticated using API keys. API keys grant extensive access rights to the Payconiq payment system therefore ensure they are kept safe. Do not share your API keys in public areas such as online sites or client-side code. The API key is set in the header of the requests via HTTP Authorization header.\n\nAll requests are encrypted using TLS 1.2 or TLS 1.3. Any calls made over unencrypted Http will fail. Wrong API keys or API requests without an API keys will also fail.\n\nTo receive an API key, a formal request has to be raised with a Payconiq account manager who will ensure that the correct access is provided.",
+      "name": "Authorization",
+      "in": "header"
+    },
+    "Signature": {
+      "type": "apiKey",
+      "description": "# Generating the Callback Signature\nTo prove that Payconiq generated the callback to the merchant, the Payconiq API sends a detached [JSON Web Signature(JWS)](https://tools.ietf.org/html/rfc7797) which includes the signed base64UrlEncoded header and request body. The signature is signed using a publicly hosted certificate. A JWS represents these logical values separated by dots(.):\n\n* JOSE Header\n* JWS Payload (Not included)\n* JWS Signature\n\nThe signature must be computed as per following instructions:\n\n    jws = base64URLEncode(JOSE Header)..base64URLEncode(alg(base64URLEncode(JOSE Header).base64URLEncode(Request Body)))\n\nThe JOSE Header setup by Payconiq consists of the following:\n\n    [JOSE Header](https://tools.ietf.org/html/rfc7515#section-4) =\n    {\n      \"typ\": \"jose+json\",\n      \"kid\": \"JWK kid\",\n      \"alg\": \"ES256\",\n\t\t\t\"crit\": [\"https://payconiq.com/sub\", \"https://payconiq.com/iss\", \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\"],\n      \"https://payconiq.com/sub\" : \"{merchantProfileId}\",\n      \"https://payconiq.com/iss\" : \"Payconiq\",\n      \"https://payconiq.com/iat\" : \"{Current creation date time in [ISODateTime format](https://www.iso20022.org/standardsrepository/public/wqt/Description/mx/dico/datatypes/_YW1tKtp-Ed-ak6NoX_4Aeg_-1624336183), expressed in UTC time format(YYYY-MM-DDThh:mm:ss.sssZ)},\n      \"https://payconiq.com/jti\" : \"{Unique-request-identifier}\",\n      \"https://payconiq.com/path\": \"callback request path ex. https://www.merchantcallback.com/payconiqpayment\"\n    }\n\nJWS Payload MUST be the same as response body as base64url encoded JSON data.\n\n\n# Validating the Callback signature\nTo validate the JWS, the following steps are performed. If any of the listed steps fails, then the signature cannot be validated.\n\n1. Read the content of the certificate path as a JSON object and in the \"keys\" array locate the object with \"kid\". The \"kid\" field corresponds to the same value in the JOSE header after it is decoded. The EXT 'kid' corresponds to \"rs.signature.ext.payconiq.com\" and the PROD 'kid' corresponds to \"es.signature.payconiq.com\".\n2. From the JSON object retrieved from step 1, locate the public key certificate in the first field of the array with name \"x5c\".\n3. Use the public key to validate the signature using your preferred library (for java the standard is jose4j) making sure that:\n* ES256 signature algorithm is whitelisted\n* The following headers are set as critical: \"https://payconiq.com/iat\", \"https://payconiq.com/jti\", \"https://payconiq.com/path\", \"https://payconiq.com/iss\", \"https://payconiq.com/sub\".\n* The payload to verify is set to the http request body sent by Payconiq in the callback.\n* The compact serialization is the jws header.\nFor a more in-depth process on how to validate the signature, you can find it [here](https://tools.ietf.org/html/rfc7515#section-5.2).\n\nCode snippets for different programming languages on how to validate the signatures can be found on the following link: https://github.com/payconiq\n\nIt is important to confirm that the signature is valid before processing the callback. This is to ensure that the payment data returned has not been tampered with and has been processed by Payconiq.\n\n\n# The Payconiq Certificates\nThe certificate is hosted in a JSON Web Key (JWK) format as a JSON Web Key Set (JWKS). They can be found using the following links:\n\n* EXT Path to JWK: https://ext.payconiq.com/certificates\n\n* PROD Path to JWK: https://payconiq.com/certificates\n\n# Rotating Payconiq Certificates\nPayconiq reserves the right to rotate the certificates used to generate the callback signature. In view of this, Payconiq recommends programmatically fetching the JWKs and using the values to validate the signature.\n\nIf the callback signature validation continues to fail, you should GET the transaction details to know the status of the transaction.\n\nPlease contact [devsupport](mailto: devsupport@payconiq.com) if the signature verification continues to fail.",
+      "name": "Signature",
+      "in": "header"
+    }
+  },
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/payments/{paymentId}": {
+      "get": {
+        "description": "Payment details of an existing payment may be obtained. A unique payment id is passed from a payment creation request and Payconiq will return the corresponding payment information.\n\nNote: It is recommended to implement this as a fallback option to obtaining the response via the callback URL.",
+        "summary": "Get Payment Details",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "operationId": "GetPaymentDetails",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 24,
+            "description": "The unique Payconiq identifier of a payment as provided by the create payment service."
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment details",
+            "schema": {
+              "$ref": "#/definitions/GetPaymentResponse"
+            },
+            "examples": {
+              "application/json": {
+                "paymentId": "5bdaf066b93d1c000bde9683",
+                "createdAt": "2018-11-01T12:24:06.004Z",
+                "expireAt": "2018-11-01T12:26:06.004Z",
+                "currency": "EUR",
+                "status": "SUCCEEDED",
+                "creditor": {
+                  "profileId": "5b71369f5832fd22658e0ef4",
+                  "merchantId": "5b71369f5832fd09188e0915",
+                  "name": "Merchant Name",
+                  "iban": "NL47FRBK0293409698",
+                  "callbackUrl": "https://www.testcallback.com/payconiq/payment"
+                },
+                "debtor": {
+                  "name": "John",
+                  "iban": "*************12636"
+                },
+                "amount": 10,
+                "transferAmount": 10,
+                "tippingAmount": 0,
+                "totalAmount": 10,
+                "description": "Otto's Payment Test",
+                "bulkId": "centraal station pos-2",
+                "_links": {
+                  "self": {
+                    "href": "https://api.ext.payconiq.com/v3/payments/5bdaf066b93d1c000bde9683"
+                  },
+                  "deeplink": {
+                    "href": "https://payconiq.com/pay/2/5bdaf066b93d1c000bde9683"
+                  },
+                  "qrcode": {
+                    "href": "https://portal.ext.payconiq.com/qrcode?c=https%3A%2F%2Fpayconiq.com%2Fpay%2F2%2F5bdaf066b93d1c000bde9683"
+                  },
+                  "refund": {
+                    "href": "https://api.ext.payconiq.com/v3/payments/5bdaf066b93d1c000bde9683/debtor/refundIban"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED` - The user not have an API Key or API Key is incorrect.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED` - The API key could not be verified or the API key does not contain the required authority to access the resource requested.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `PAYMENT_NOT_FOUND`: Payment could not be found for the corresponding payment id.\n",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too Many Requests\n",
+            "schema": {}
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR` - Technical error in the Payconiq payment service.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "**Error Codes**",
+            "schema": {}
+          }
+        }
+      },
+      "delete": {
+        "description": "This endpoint is used to cancel a created Payconiq payment. A payment can only be cancelled only if the status is either PENDING or IDENTIFIED. Once cancelled, the status of the payment is set to CANCELLED.",
+        "summary": "Cancel Payment",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "operationId": "CancelPayment",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 24,
+            "description": "The unique identifier of a payment as provided by the create payment service."
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Payment is successfully cancelled",
+            "headers": {}
+          },
+          "401": {
+            "description": "* `UNAUTHORIZED` - The user not have an API Key or API Key is incorrect.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "* `ACCESS_DENIED` - The API key could not be verified or the API key does not contain the required authority to access the resource requested.\n* `CALLER_NOT_ALLOWED_TO_CANCEL` - The merchant is not allowed to cancel this payment.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "* `PAYMENT_NOT_FOUND` - Payment could not be found for the corresponding payment id.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "* `PAYMENT_NOT_PENDING` - Payment is not in a pending or identify state.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too Many Requests\n",
+            "schema": {}
+          },
+          "500": {
+            "description": "* `TECHNICAL_ERROR` - Technical error in the Payconiq payment service.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/payments/search": {
+      "post": {
+        "description": "This endpoint is use to retrieve a list of a Payconiq payments. The page and size parameters are used to specify how many records to return as well as filter the results for the total number of records returned per page. By default the latest 50 payments are returned per request and are sorted by creation date in descending order.",
+        "summary": "Get Payments List",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "operationId": "GetPaymentsList",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0.0,
+            "exclusiveMinimum": false,
+            "description": "Zero based page index in the list request.\n**NB:** The page defaults to 0 if not present in the request path."
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0.0,
+            "exclusiveMinimum": false,
+            "description": "The size of the page to be returned in the list.\n**NB:** The size defaults to 50 if not present in the request path."
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "description": "This endpoint is use to retrieve a list of a Payconiq payments. The page and size parameters are used to specify how many records to return as well as filter the results for the total number of records returned per page. By default the latest 50 payments are returned per request and are sorted by creation date in descending order.",
+            "schema": {
+              "$ref": "#/definitions/PaymentSearchQuery"
+            }
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of payments",
+            "schema": {
+              "$ref": "#/definitions/PaymentSearchResponse"
+            },
+            "examples": {
+              "application/json": {
+                "size": 2,
+                "totalPages": 7,
+                "totalElements": 13,
+                "number": 0,
+                "details": [
+                  {
+                    "paymentId": "5bdaf066b93d1c000bde9683",
+                    "createdAt": "2018-11-01T12:24:06.004Z",
+                    "expireAt": "2018-11-01T12:26:06.004Z",
+                    "currency": "EUR",
+                    "status": "SUCCEEDED",
+                    "creditor": {
+                      "profileId": "5b71369f5832fd22658e0ef4",
+                      "merchantId": "5b71369f5832fd09188e0915",
+                      "name": "Merchant Name",
+                      "iban": "NL47FRBK0293409698",
+                      "callbackUrl": "https://www.testcallback.com/payconiq/payment"
+                    },
+                    "debtor": {
+                      "name": "John",
+                      "iban": "*************12636"
+                    },
+                    "amount": 10,
+                    "transferAmount": 10,
+                    "tippingAmount": 0,
+                    "totalAmount": 10,
+                    "description": "Otto's Payment Test",
+                    "bulkId": "centraal station pos-2",
+                    "_links": {
+                      "self": {
+                        "href": "https://api.ext.payconiq.com/v3/payments/5bdaf066b93d1c000bde9683"
+                      },
+                      "deeplink": {
+                        "href": "https://payconiq.com/pay/2/5bdaf066b93d1c000bde9683"
+                      },
+                      "qrcode": {
+                        "href": "https://portal.ext.payconiq.com/qrcode?c=https%3A%2F%2Fpayconiq.com%2Fpay%2F2%2F5bdaf066b93d1c000bde9683"
+                      },
+                      "refund": {
+                        "href": "https://api.ext.payconiq.com/v3/payments/5bdaf066b93d1c000bde9683/debtor/refundIban"
+                      }
+                    }
+                  },
+                  {
+                    "paymentId": "5bdaf066b93d1c000bde9683",
+                    "createdAt": "2018-11-01T12:24:06.004Z",
+                    "expireAt": "2018-11-01T12:26:06.004Z",
+                    "currency": "EUR",
+                    "status": "SUCCEEDED",
+                    "creditor": {
+                      "profileId": "5b71369f5832fd22658e0ef4",
+                      "merchantId": "5b71369f5832fd09188e0915",
+                      "name": "Merchant Name",
+                      "iban": "NL47FRBK0293409698",
+                      "callbackUrl": "https://www.testcallback.com/payconiq/payment"
+                    },
+                    "debtor": {
+                      "name": "John",
+                      "iban": "*************12636"
+                    },
+                    "amount": 10,
+                    "transferAmount": 10,
+                    "tippingAmount": 0,
+                    "totalAmount": 10,
+                    "description": "Otto's Payment Test",
+                    "bulkId": "centraal station pos-2",
+                    "_links": {
+                      "self": {
+                        "href": "https://api.ext.payconiq.com/v3/payments/5bdaf066b93d1c000bde9683"
+                      },
+                      "deeplink": {
+                        "href": "https://payconiq.com/pay/2/5bdaf066b93d1c000bde9683"
+                      },
+                      "qrcode": {
+                        "href": "https://portal.ext.payconiq.com/qrcode?c=https%3A%2F%2Fpayconiq.com%2Fpay%2F2%2F5bdaf066b93d1c000bde9683"
+                      },
+                      "refund": {
+                        "href": "https://api.ext.payconiq.com/v3/payments/5bdaf066b93d1c000bde9683/debtor/refundIban"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED` - The user not have an API Key or API Key is incorrect.",
+            "schema": {}
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED` - The API key could not be verified or the API key does not contain the required authority to access the resource requested.",
+            "schema": {}
+          },
+          "429": {
+            "description": "Too Many Requests\n",
+            "schema": {}
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR` - Technical error in the Payconiq payment service.",
+            "schema": {}
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/payments": {
+      "post": {
+        "description": "In order to begin a payment, you need to create a payment via the Payconiq through a POST request. A unique payment identifier is valid for two minutes (120 seconds) after which it expires. If a payment does not take place within these two minutes, a new payment has to be created.\n\nOnboarded merchants should have API keys for each product. The API key contains the necesssary information required to find the correct merchant to process payments on their behalf.",
+        "summary": "Create Payment",
+        "tags": [
+          "Merchant Endpoints"
+        ],
+        "operationId": "CreatePayment",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/PaymentCreateRequest"
+            }
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Payment has been created successfully",
+            "schema": {
+              "$ref": "#/definitions/PaymentCreateResponse"
+            },
+            "examples": {
+              "application/json": {
+                "paymentId": "5aa9a9700000000000000000",
+                "status": "PENDING",
+                "createdAt": "2018-09-18T11:43:29.160Z",
+                "expiresAt": "2018-09-18T11:43:29.160Z",
+                "description": "Sample description",
+                "reference": "987456264",
+                "amount": 112,
+                "currency": "EUR",
+                "creditor": {
+                  "profileId": "5b71369f5832fd22658e0ef4",
+                  "merchantId": "5b71369f5832fd09188e0915",
+                  "name": "Merchant Name",
+                  "iban": "NL47FRBK0293409698",
+                  "callbackUrl": "https://www.testcallback.com/payconiq/payment"
+                },
+                "_links": {
+                  "self": {
+                    "href": "https://api.ext.payconiq.com/v3/payments/5bdb1685b93d1c000bde96f2"
+                  },
+                  "deeplink": {
+                    "href": "https://payconiq.com/pay/2/5bdb1685b93d1c000bde96f2"
+                  },
+                  "qrcode": {
+                    "href": "https://portal.ext.payconiq.com/qrcode?c=https%3A%2F%2Fpayconiq.com%2Fpay%2F2%2F5bdb1685b93d1c000bde96f2"
+                  },
+                  "cancel": {
+                    "href": "https://api.ext.payconiq.com/v3/payments/5bdb1685b93d1c000bde96f2"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "**Error Codes**\n* `BODY_MISSING`: A JSON body needs to be provided.\n* `FIELD_IS_REQUIRED`: A mandatory field is missing from the JSON request.\n* `FIELD_IS_INVALID` - A field provided is not valid. Eg: The length of a field exceeds what is required.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            },
+            "examples": {
+              "application/json": {
+                "traceId": "b2586833395d4750",
+                "spanId": "c235e54376fab4b9",
+                "code": "FIELD_IS_REQUIRED",
+                "message": "Field 'amount' is mandatory"
+              }
+            }
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED` - The user not have an API Key or API Key is incorrect.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED` - The API key could not be verified or the API key does not contain the required authority to access the resource requested.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `MERCHANT_PROFILE_NOT_FOUND` - The merchant profile for creating a payment does not exist.",
+            "schema": {}
+          },
+          "422": {
+            "description": "**Error Codes**\n* `UNABLE_TO_PAY_CREDITOR` - This could be returned for multiple reasons in case something goes wrong.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too Many Requests\n",
+            "schema": {}
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR` - Technical error in the Payconiq payment service.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "503": {
+            "description": "**Error Codes**\n* `TRY_AGAIN_LATER` - one of the internal services is unavailable",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{merchantCallbackUrl}": {
+      "post": {
+        "description": "# The Payconiq Callback\n\nEach merchant needs to define a specific endpoint to their backend (e.g., https://checkout.company.com/webhook/91FA6EEC30844FAAB5). This endpoint will be called by Payconiq with details about the payment. This allows the merchant’s backend to process the data (mark the transaction in database, update the product count number, send email to the customer, etc.). The callbacks are asynchronous therefore the order in which they arrive is not guaranteed. The callbacks are issued via HTTP POST requests and encrypted using TLS\n\nThe JSON-formatted POST request contains payment details including the status of the payment. The values in the body can be used to update the payment in the merchant’s system.",
+        "summary": "callback",
+        "tags": [
+          "Callback to Merchants"
+        ],
+        "operationId": "callback",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "description": "The body of the callback is JSON formatted with fields indicating the status of the payment. The values in the body can be used to update the payment in the merchant’s system.\n\nOnce the signature has been validated, the values in the body can be used to update the payment in the merchant’s system.\n\nThe following parameters are included in the body of the callback request.",
+            "schema": {
+              "$ref": "#/definitions/MerchantCallback"
+            }
+          },
+          {
+            "name": "user-agent",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "The User-Agent request header contains a characteristic string that allows the network protocol peers to identify the application type, operating system, software vendor or software version of the requesting software user agent."
+          },
+          {
+            "name": "Content-type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "The Content-Type entity header is used to indicate the media type of the resource."
+          },
+          {
+            "name": "merchantCallbackUrl",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "If sync callback is configured (in the merchant profile), Payconiq waits a response from the callback endpoint and a return code of 200 informs Payconiq that the merchant accepts this payment",
+            "schema": {
+              "type": "object"
+            },
+            "headers": {}
+          }
+        }
+      }
+    },
+    "/payments/{paymentId}/debtor/refundIban": {
+      "get": {
+        "description": "# Get Refund IBAN\n\nThis endpoint is used to retrieve the IBAN of the consumer for the purpose of performing refunds to the consumer. This endpoint does not handle the actual transfer of money. The merchant or partner is responsible for actual transfer of funds to the consumer. Getting the IBAN for refund only applies when the payment is SUCCEEDED and the consumer is still an active Payconiq user.",
+        "summary": "create-refund",
+        "tags": [
+          "Refunds"
+        ],
+        "operationId": "create-refund",
+        "deprecated": false,
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 24,
+            "maxLength": 24,
+            "description": "The unique identifier of a payment as provided by the create payment service."
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": false,
+            "default": "application/json",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The IBAN of the debtor used in the specified payment",
+            "schema": {
+              "$ref": "#/definitions/RefundResponse"
+            },
+            "examples": {
+              "application/json": {
+                "iban": "NL77ABNA1111111111"
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "**Error Codes**\n* `UNAUTHORIZED` - The user not have an API Key or API Key is incorrect.",
+            "schema": {}
+          },
+          "403": {
+            "description": "**Error Codes**\n* `ACCESS_DENIED` - The API key could not be verified or the API key does not contain the required authority to access the resource requested.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "**Error Codes**\n* `PAYMENT_NOT_FOUND`: Payment could not be found for the corresponding payment id.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "**Error Codes**\n* `REFUND_NOT_ALLOWED`: The payment is a consumer payment(peer2peer or payment request).\n* `REFUND_NOT_AVAILABLE`: The details of the consumer is not available yet.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too many requests\n",
+            "schema": {}
+          },
+          "500": {
+            "description": "**Error Codes**\n* `TECHNICAL_ERROR` - Technical error in the Payconiq payment service.",
+            "schema": {}
+          },
+          "503": {
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "GetPaymentResponse": {
+      "title": "GetPaymentResponse",
+      "description": "Response containing information on the requested payment.",
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "description": "The unique Payconiq payment id.",
+          "example": "5bdaf066b93d1c000bde9683",
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24
+        },
+        "createdAt": {
+          "description": "The creation date and time of the Payconiq payment.",
+          "example": "2018-11-01T12:24:06.004Z",
+          "type": "string",
+          "format": "date-time"
+        },
+        "expireAt": {
+          "description": "The date and time when a Payconiq payment expires.",
+          "example": "2018-11-01T12:26:06.004Z",
+          "type": "string",
+          "format": "date-time"
+        },
+        "currency": {
+          "description": "Currency code. Only EUR is supported [ISO 4217](http://en.wikipedia.org/wiki/ISO_4217)",
+          "example": "EUR",
+          "type": "string",
+          "default": "EUR"
+        },
+        "status": {
+          "$ref": "#/definitions/MerchantPaymentStatus"
+        },
+        "creditor": {
+          "$ref": "#/definitions/PaymentCreditorResponse"
+        },
+        "debtor": {
+          "$ref": "#/definitions/Debtor"
+        },
+        "amount": {
+          "description": "Payment amount in Euro cents. If no amount was requested by creditor, this will be 0",
+          "example": 100,
+          "type": "integer",
+          "format": "int64"
+        },
+        "transferAmount": {
+          "description": "The amount the consumer will be charged in Euro cents.",
+          "example": 100,
+          "type": "integer",
+          "format": "int64"
+        },
+        "tippingAmount": {
+          "description": "The amount added as a tip by the consumer in Euro cents.",
+          "example": 0,
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalAmount": {
+          "description": "The amount added as a tip by the consumer in Euro cents.",
+          "example": 100,
+          "type": "integer",
+          "format": "int64"
+        },
+        "description": {
+          "description": "Custom description of the payment. This will be shown to the consumer when making payments and will be present on the bank statement of the merchant and consumer for reconciliation purposes. Only the first 35 characters are used for the remittance information.",
+          "example": "Test Description",
+          "type": "string"
+        },
+        "message": {
+          "description": "Custom message from the consumer.",
+          "type": "string"
+        },
+        "reference": {
+          "description": "Merchant’s payment reference used to reference the Payconiq payment in the merchant’s system.",
+          "example": "12346816AFV",
+          "type": "string"
+        },
+        "bulkId": {
+          "description": "A field set by the calling party used to reference a bulk batch payment. If not set, bulking is done based on the IBAN.",
+          "example": "Bulk-1-200",
+          "type": "string"
+        },
+        "_links": {
+          "$ref": "#/definitions/Links"
+        }
+      },
+      "required": [
+        "paymentId",
+        "createdAt",
+        "expireAt",
+        "currency",
+        "status",
+        "creditor",
+        "amount",
+        "transferAmount",
+        "totalAmount"
+      ]
+    },
+    "PaymentCreateRequest": {
+      "title": "PaymentCreateRequest",
+      "description": "Request to initiate/create a payment as a Merchant",
+      "type": "object",
+      "properties": {
+        "reference": {
+          "description": "External payment reference used to reference the Payconiq payment in the calling party's system.",
+          "example": "987456264",
+          "type": "string",
+          "maxLength": 35
+        },
+        "bulkId": {
+          "description": "A field set by the calling party used to reference a bulk batch payment. If not set, bulking is done based on the IBAN.",
+          "example": "Bulk-1-200",
+          "type": "string",
+          "maxLength": 35
+        },
+        "amount": {
+          "description": "Payment amount in Euro cents.",
+          "example": 100,
+          "type": "integer",
+          "minimum": 1.0,
+          "maximum": 999999.0,
+          "format": "int64"
+        },
+        "currency": {
+          "$ref": "#/definitions/Currency2"
+        },
+        "description": {
+          "description": "Custom description of the payment. This will be shown to the consumer when making payments and will be present on the bank statement of the merchant and consumer for reconciliation purposes. Only the first 35 characters are used for the remittance information.",
+          "example": "Tes Description",
+          "type": "string",
+          "maxLength": 140
+        },
+        "callbackUrl": {
+          "description": "A url to which the merchant or partner will be notified of a payment. Must be Https for production.",
+          "example": "https://www.testcallback.com/payconiq/payment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ]
+    },
+    "PaymentCreateResponse": {
+      "title": "PaymentCreateResponse",
+      "description": "Object returned if the payment gets successfully created",
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "description": "The unique Payconiq payment id.",
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24
+        },
+        "status": {
+          "description": "The status of the Payconiq payment.",
+          "example": "PENDING",
+          "type": "string",
+          "default": "PENDING"
+        },
+        "createdAt": {
+          "description": "The creation date and time of the Payconiq payment.",
+          "example": "2018-09-18T11:43:29.160Z",
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "description": "The date and time when a Payconiq payment expires.",
+          "example": "2018-09-18T11:43:29.160Z",
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "description": "Custom description of the payment. This will be shown to the consumer when making payments and will be present on the bank statement of the merchant and consumer for reconciliation purposes. Only the first 35 characters are used for the remmittance information.",
+          "example": "Sample description",
+          "type": "string"
+        },
+        "reference": {
+          "description": "Merchant’s payment reference used to reference the Payconiq payment in the merchant’s system.",
+          "example": "987456264",
+          "type": "string"
+        },
+        "amount": {
+          "description": "Payment amount in Euro cents.",
+          "example": 100,
+          "type": "integer",
+          "minimum": 1.0,
+          "maximum": 999999.0,
+          "format": "int64"
+        },
+        "currency": {
+          "description": "Payment currency code in ISO 4217 format. Only Euros(EUR) supported at the moment.",
+          "example": "EUR",
+          "type": "string"
+        },
+        "creditor": {
+          "$ref": "#/definitions/PaymentCreditorResponse"
+        },
+        "_links": {
+          "$ref": "#/definitions/Links"
+        }
+      },
+      "required": [
+        "paymentId",
+        "status",
+        "createdAt",
+        "expiresAt",
+        "amount",
+        "currency",
+        "creditor",
+        "_links"
+      ]
+    },
+    "MerchantCallback": {
+      "title": "MerchantCallback",
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "description": "The unique Payconiq payment id.",
+          "example": "687e0f4c373dbc4f381d31cd",
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24
+        },
+        "transferAmount": {
+          "description": "The amount the consumer will be charged in Euro cents",
+          "example": 700,
+          "type": "integer",
+          "format": "int64"
+        },
+        "tippingAmount": {
+          "description": "The amount added as a tip by the consumer in Euro cents.",
+          "example": 0,
+          "type": "integer",
+          "default": 0,
+          "format": "int64"
+        },
+        "totalAmount": {
+          "description": "The amount the consumer pays in total in Euro cents.",
+          "example": 700,
+          "type": "integer",
+          "format": "int64"
+        },
+        "currency": {
+          "description": "Payment currency code in ISO 4217 format. Only Euros supported at the moment.",
+          "example": "EUR",
+          "type": "string",
+          "default": "EUR"
+        },
+        "amount": {
+          "description": "Payment amount in Euro cents.",
+          "example": 700,
+          "type": "integer",
+          "format": "int64"
+        },
+        "description": {
+          "description": "Custom description of the payment. This will be shown to the consumer when making payments and will be present on the bank statement of the merchant and consumer for reconciliation purposes. Only the first 35 characters are used for the remittance information.",
+          "example": "Sample description",
+          "type": "string"
+        },
+        "reference": {
+          "description": "Merchant’s payment reference used to reference the Payconiq payment in the merchant’s system.",
+          "example": "12346816AFV",
+          "type": "string"
+        },
+        "createdAt": {
+          "description": "The creation date and time of the Payconiq payment.",
+          "example": "2018-09-20T10:53:49.875Z",
+          "type": "string",
+          "format": "date-time"
+        },
+        "expireAt": {
+          "description": "The date and time when a Payconiq payment expires.",
+          "example": "2018-09-20T10:55:49.875Z",
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/definitions/MerchantPaymentStatus"
+        },
+        "debtor": {
+          "$ref": "#/definitions/Debtor1"
+        }
+      },
+      "required": [
+        "paymentId",
+        "transferAmount",
+        "totalAmount",
+        "currency",
+        "amount",
+        "createdAt",
+        "status",
+        "debtor"
+      ]
+    },
+    "ErrorResponse": {
+      "title": "ErrorResponse",
+      "description": "error response received from server",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "Text describing the error that has occurred.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Text describing the error that has occurred.",
+          "type": "string"
+        },
+        "traceId": {
+          "description": "The id that is assigned to a single request or job.",
+          "type": "string"
+        },
+        "spanId": {
+          "description": "The id of work unit where the error occurred.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "traceId",
+        "spanId"
+      ]
+    },
+    "PaymentSearchQuery": {
+      "title": "PaymentSearchQuery",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "The start date and time to filter the search results.\nDefault: Current date and time minus one day. (Now - 1 day)\n\nFormat: YYYY-MM-ddTHH:mm:ss.SSSZ",
+          "example": "today - 1day (yesterday)",
+          "type": "string",
+          "default": "today - 1day (yesterday)",
+          "format": "date-time"
+        },
+        "to": {
+          "description": "The end date and time to filter the search results..\nDefault: Current date and time. (Now)\n\nFormat: YYYY-MM-ddTHH:mm:ss.SSSZ",
+          "type": "string",
+          "format": "date-time"
+        },
+        "paymentStatuses": {
+          "description": "An array of payment statuses to filter the search results on.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MerchantPaymentStatus"
+          }
+        },
+        "reference": {
+          "description": "External payment reference used to reference the Payconiq payment in the calling party's system.",
+          "type": "string"
+        }
+      }
+    },
+    "PaymentSearchResponse": {
+      "title": "PaymentSearchResponse",
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "The total size of elements returned in the current page.",
+          "type": "integer",
+          "minimum": 0.0,
+          "format": "int32"
+        },
+        "totalPages": {
+          "description": "Total number of pages that contain the list of results.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalElements": {
+          "description": "Total number of elements in the list requested.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "number": {
+          "description": "The current page number.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GetPaymentResponse"
+          }
+        }
+      },
+      "required": [
+        "size",
+        "totalPages",
+        "totalElements",
+        "number"
+      ]
+    },
+    "AbstractListResponse": {
+      "title": "AbstractListResponse",
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "The total size of elements returned in the current page.",
+          "type": "integer",
+          "minimum": 0.0,
+          "format": "int32"
+        },
+        "totalPages": {
+          "description": "Total number of pages that contain the list of results.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalElements": {
+          "description": "Total number of elements in the list requested.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "number": {
+          "description": "The current page number.",
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "required": [
+        "size",
+        "totalPages",
+        "totalElements",
+        "number"
+      ]
+    },
+    "RefundResponse": {
+      "title": "RefundResponse",
+      "type": "object",
+      "properties": {
+        "iban": {
+          "description": "The IBAN of the consumer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "iban"
+      ]
+    },
+    "MerchantPaymentStatus": {
+      "title": "MerchantPaymentStatus",
+      "description": "| Status | Description |\n|--------|-------------|\n| AUTHORIZED |This is the status of a payment before it is set to SUCCEEDED. The user has confirmed the payment, Payconiq's internal checks for payment are successful and the bank has authorized the payment.|\n| AUTHORIZATION_FAILED | This occurs when the bank fails to approve a payment due to validation reasons. These reasons include insufficient funds, limits exceeded, etc.|\n| CANCELLED | A payment has been cancelled by a merchant or consumer. If a payment is cancelled, it cannot be scanned and paid.|\n| EXPIRED | A payment has exceeded the allowable time to pay. If a payment has expired, it cannot be paid. |\n| FAILED | \tSomething has gone wrong while confirming a payment payment such as incorrect consumer or merchant data setup. |\n|IDENTIFIED| A payment has been scanned by a Payconiq supported app and is pending confirmation or cancellation. |\n| PENDING | A payment has been created and it has not been scanned. Consumers can scan QR code linked to this payment and confirm it.|\n| SUCCEEDED | A payment has been authorized and processed successfully by Payconiq and the consumer's bank. This the final end state of a successful payment.|",
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "IDENTIFIED",
+        "AUTHORIZED",
+        "AUTHORIZATION_FAILED",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "EXPIRED"
+      ]
+    },
+    "Currency": {
+      "title": "Currency",
+      "description": "Currency code. Only EUR is supported [ISO 4217](http://en.wikipedia.org/wiki/ISO_4217)",
+      "type": "string",
+      "enum": [
+        "EUR"
+      ]
+    },
+    "PaymentCreditorResponse": {
+      "title": "PaymentCreditorResponse",
+      "description": "The merchant account object set to receive the Payconiq payment from a consumer.",
+      "type": "object",
+      "properties": {
+        "profileId": {
+          "description": "The unique payment product identifier of the merchant.",
+          "example": "5b71369f5832fd22658e0ef4",
+          "type": "string"
+        },
+        "merchantId": {
+          "description": "The unique identifier of a merchant.",
+          "example": "5b71369f5832fd09188e0915",
+          "type": "string"
+        },
+        "name": {
+          "description": "The merchant’s company name that will be shown to the consumer.",
+          "example": "Merchant Name",
+          "type": "string"
+        },
+        "iban": {
+          "description": "The bank account of the merchant where payments will be sent to.",
+          "example": "NL47FRBK0293409698",
+          "type": "string"
+        },
+        "callbackUrl": {
+          "description": "A URL to which the Merchant or Partner will be notified of a payment.\n\nMust be https for production.",
+          "example": "https://www.testcallback.com/payconiq/payment",
+          "type": "string"
+        }
+      }
+    },
+    "Links": {
+      "title": "Links",
+      "description": "Provides information to navigate to our REST interfaces dynamically, by including hypermedia links to them. Note that for some links inclusion depends on the status of the payment (e.g. cancel link will be available on PENDING and refund on SUCCEEDED). The urls can be used by merchants to load the QR codes, perform App2App linking, cancel a payment and get the payment details.",
+      "type": "object",
+      "properties": {
+        "self": {
+          "$ref": "#/definitions/Link"
+        },
+        "deeplink": {
+          "$ref": "#/definitions/Link"
+        },
+        "qrcode": {
+          "$ref": "#/definitions/Link"
+        },
+        "cancel": {
+          "$ref": "#/definitions/Link"
+        },
+        "refund": {
+          "$ref": "#/definitions/Link"
+        }
+      },
+      "required": [
+        "self",
+        "deeplink",
+        "qrcode"
+      ]
+    },
+    "Link": {
+      "title": "Link",
+      "type": "object",
+      "properties": {
+        "href": {
+          "description": "URL String.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "href"
+      ]
+    },
+    "Currency2": {
+      "title": "Currency2",
+      "description": "Payment currency code in ISO 4217 format. Only Euros(EUR) supported at the moment. [ISO 4217](http://en.wikipedia.org/wiki/ISO_4217)",
+      "type": "string",
+      "enum": [
+        "EUR"
+      ]
+    },
+    "Debtor": {
+      "title": "Debtor",
+      "description": "The consumer account object that makes payments to the merchant",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of Debtor",
+          "example": "John",
+          "type": "string"
+        },
+        "iban": {
+          "description": "IBAN of Debtor masked",
+          "example": "*************12636",
+          "type": "string"
+        }
+      }
+    },
+    "Debtor1": {
+      "title": "Debtor1",
+      "description": "The consumer account object that makes payments to the merchant",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the consumer.",
+          "example": "John",
+          "type": "string"
+        },
+        "iban": {
+          "description": "The masked IBAN of the consumer.",
+          "example": "***********42901",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "iban"
+      ]
+    }
+  },
+  "security": [
+    {
+      "Authorization": [],
+      "Signature": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Merchant Endpoints"
+    },
+    {
+      "name": "Callback to Merchants",
+      "description": ""
+    },
+    {
+      "name": "Refunds",
+      "description": ""
+    }
+  ]
+}
